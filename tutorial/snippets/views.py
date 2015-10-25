@@ -24,6 +24,9 @@ from snippets.permissions import IsOwnerOrReadOnly
 from rest_framework.reverse import reverse
 from rest_framework import renderers
 
+from rest_framework import viewsets
+from rest_framework.decorators import detail_route
+
 # Create your views here.
 class JSONResponse(HttpResponse):
 	"""
@@ -227,3 +230,29 @@ def api_root(request, format = None):
 		'users': reverse('user-list', request = request, format = format),
 		'snippets': reverse('snippet-list', request = request, format = format)
 	})
+
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
+	"""
+	This viewset automatically provides list and detail actions
+	"""
+	queryset = User.objects.all()
+	serializer_class = UserSerializer
+
+class SnippetViewSet(viewsets.ModelViewSet):
+	"""
+	This viewset automatically provides create, retrieve, list, update, destroy actions
+	Additionally a highlight action is provided for
+	"""
+	queryset = Snippet.objects.all()
+	serializer_class = SnippetSerializer
+	permission_classes = (permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly, )
+
+	@detail_route(renderer_classes = [renderers.StaticHTMLRenderer])
+	def highlight(self, request, *args, **kwargs):
+		snippet = self.get_object()
+		return Response(snippet.highlighted)
+
+	def perform_create(self, serializer):
+		serializer.save(owner = self.request.user)
+
+
